@@ -25,12 +25,19 @@ export function secPerBeat(d, masterBpm) {
   return bpm > 0 ? 60 / bpm : 0;
 }
 
-/** Snap a time to the nearest beat when QUANT is on. beatOffset = first cue or 0. */
+/**
+ * Where beat one sits. An explicit downbeat wins; otherwise hot cue 1 acts as
+ * the anchor, which is the convention on CDJs, and failing that the start of
+ * the track — which is only right for tracks that begin exactly on the beat.
+ */
+export const gridAnchor = (d) => d.gridOffset ?? d.cues[0] ?? 0;
+
+/** Snap a time to the nearest beat when QUANT is on. */
 export function quantize(d, t, masterBpm = state.masterBpm) {
   if (!d.quantize) return t;
   const spb = secPerBeat(d, masterBpm);
   if (!spb) return t;
-  const offset = d.cues[0] ?? 0;
+  const offset = gridAnchor(d);
   return offset + Math.round((t - offset) / spb) * spb;
 }
 

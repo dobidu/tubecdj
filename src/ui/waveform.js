@@ -4,7 +4,7 @@
 
 import { h, rng, hash, fmt, drag } from '../util.js';
 import { state } from '../state.js';
-import { secPerBeat } from '../mix/sync.js';
+import { secPerBeat, gridAnchor } from '../mix/sync.js';
 
 const WINDOW_SEC = 10;
 const gridCache = new Map();
@@ -75,7 +75,7 @@ function drawBig(cv, d, color) {
 
   // beat grid
   if (spb > 0) {
-    const offset = d.cues[0] ?? 0;
+    const offset = gridAnchor(d);
     const first = Math.ceil((t0 - offset) / spb);
     for (let b = first; ; b++) {
       const t = offset + b * spb;
@@ -107,6 +107,14 @@ function drawBig(cv, d, color) {
       ctx.fillStyle = t <= d.pos ? past : color;
       ctx.fillRect(x, mid - amp, 2 - 0.4, amp * 2);
     }
+  }
+
+  // the downbeat, when it was set by hand
+  if (d.gridOffset != null && d.gridOffset >= t0 && d.gridOffset <= t0 + WINDOW_SEC) {
+    const x = ((d.gridOffset - t0) / WINDOW_SEC) * w;
+    ctx.fillStyle = '#38E08B';
+    ctx.fillRect(Math.round(x) - 1, 0, 2, hgt);
+    ctx.fillRect(Math.round(x) - 1, 0, 7, 4);
   }
 
   // hot cues

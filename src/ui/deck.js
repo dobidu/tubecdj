@@ -243,7 +243,7 @@ export function createDeckPanel({ deckId, color, app }) {
     jog.update({
       bpmLabel: bpm > 0 ? bpm.toFixed(1) : '—',
       // the key when we actually know it, otherwise where the BPM came from
-      keyLabel: d.key || (d.bpmSource === '—' ? '—' : d.bpmSource),
+      keyLabel: d.key || (d.bpmSource === '—' ? '—' : d.bpmSource === 'DB' ? 'DB' : d.bpmSource),
     });
     pads.update();
   }

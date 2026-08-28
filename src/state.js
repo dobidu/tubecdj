@@ -47,6 +47,7 @@ const deck = (id) => ({
   quantize: true,
   padMode: 'HOT CUE',
   cues: new Array(8).fill(null),   // seconds or null
+  gridOffset: null,      // downbeat in seconds; null = fall back to hot cue 1
   loop: { on: false, inSec: null, len: 4 },
   bend: 0,               // temporary rate offset from jog
   rateApplied: 1,        // rate the player actually used (YouTube quantizes)
@@ -104,6 +105,8 @@ const clampNum = (v, lo, hi, fb) => (typeof v === 'number' && Number.isFinite(v)
 
 export const cuesFor = (videoId) => (videoId ? read('cues:' + videoId, null) : null);
 export const saveCues = (videoId, cues) => { if (videoId) write('cues:' + videoId, cues); };
+export const gridFor = (videoId) => (videoId ? read('grid:' + videoId, null) : null);
+export const saveGrid = (videoId, off) => { if (videoId) write('grid:' + videoId, off); };
 export const bpmFor = (videoId) => (videoId ? read('bpm:' + videoId, null) : null);
 export const saveBpm = (videoId, bpm) => { if (videoId) write('bpm:' + videoId, bpm); };
 
@@ -126,7 +129,7 @@ export function saveSession() {
       videoId: d.videoId, title: d.title, queue: d.queue, queueIndex: d.queueIndex,
       pos: d.pos, bpm: d.bpm, bpmSource: d.bpmSource, pitch: d.pitch, pitchRange: d.pitchRange,
       sync: d.sync, quantize: d.quantize, padMode: d.padMode, cues: d.cues, loop: d.loop,
-      autoNext: d.autoNext,
+      autoNext: d.autoNext, gridOffset: d.gridOffset,
     });
   }
   write('history', state.history.slice(0, 8));
@@ -166,6 +169,7 @@ export function restoreSession() {
       sync: !!s.sync, quantize: s.quantize !== false, autoNext: s.autoNext !== false,
       padMode: s.padMode === 'BEAT LOOP' ? 'BEAT LOOP' : 'HOT CUE',
       cues: Array.isArray(s.cues) && s.cues.length === 8 ? s.cues : new Array(8).fill(null),
+      gridOffset: typeof s.gridOffset === 'number' ? s.gridOffset : null,
       loop: s.loop && typeof s.loop === 'object' ? { on: false, inSec: s.loop.inSec ?? null, len: s.loop.len ?? 4 } : { on: false, inSec: null, len: 4 },
     });
     const savedCues = cuesFor(d.videoId);

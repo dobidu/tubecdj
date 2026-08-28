@@ -9,6 +9,7 @@ import {
 import { h, clamp, toast, throttle } from './util.js';
 import { DeckPlayer, PS } from './yt/player.js';
 import { parseInput, fetchMeta, newItem, addToQueue, moveInQueue, shuffleQueue, removeFromQueue, nextIndex, renameInQueues } from './yt/queue.js';
+import { lookupAnalysis } from './yt/analysis.js';
 import { MasterBus, ChannelStrip, LocalTrack, resumeAudio } from './audio/graph.js';
 import { FXUnit } from './audio/fx.js';
 import { Sampler } from './audio/sampler.js';
@@ -152,6 +153,7 @@ async function loadVideo(id, videoId, { title, autoplay = false, startAt = 0 } =
   }
   pushHistory(videoId, state.deck[id].title);
   saveSession();
+  lookupTrackAnalysis(id, videoId);
 }
 
 /**
@@ -170,6 +172,30 @@ function adoptPlayerTitle(id) {
   setDeck(id, { title }, 'yt');
   renameInQueues(d.videoId, title);
   pushHistory(d.videoId, title);
+  persist();
+}
+
+/**
+ * Ask the open music databases what this track's BPM and key are. Usually the
+ * answer is nothing — the data froze in 2022 and the long tail was never
+ * covered — so this only ever fills in blanks and never overwrites a tempo the
+ * user tapped.
+ */
+async function lookupTrackAnalysis(id, videoId) {
+  const cached = analysisFor('yt:' + videoId);
+  const found = cached !== null ? cached : await lookupAnalysis(videoId);
+  if (cached === null) saveAnalysis('yt:' + videoId, found || false);
+  if (!found) return;
+
+  const d = state.deck[id];
+  if (d.videoId !== videoId || d.source === 'local') return;
+  const patch = {};
+  if (!d.bpm) { patch.bpm = found.bpm; patch.bpmSource = 'DB'; }
+  if (!d.key && found.key) { patch.key = found.key.camelot; patch.keyName = found.key.name; }
+  if (!Object.keys(patch).length) return;
+  setDeck(id, patch, 'analysis');
+  saveBpm(videoId, patch.bpm ?? d.bpm);
+  toast(`Deck ${id}: ${found.bpm} BPM${found.key ? ' · ' + found.key.camelot : ''} (MusicBrainz/AcousticBrainz)`);
   persist();
 }
 

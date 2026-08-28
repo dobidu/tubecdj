@@ -91,6 +91,27 @@ Aqui EQ, filtro, FX, waveform real (picos RMS), BPM automático (autocorrelaçã
 
 A análise (BPM + key) é guardada por arquivo (`nome:tamanho`), então soltar a mesma faixa de novo é instantâneo.
 
+## BPM e key para faixas do YouTube
+
+O áudio é inalcançável, mas a faixa pode ser *identificada*. O caminho é todo client-side, sem chave e sem backend:
+
+```
+video id → MusicBrainz  /ws/2/url?resource=…&inc=recording-rels   → recording MBID
+        → AcousticBrainz /api/v1/low-level?features=rhythm.bpm;…  → BPM + key
+```
+
+Os dois serviços mandam `Access-Control-Allow-Origin: *`, e o filtro `features=` derruba a resposta de 57 KB para ~530 bytes. Quando resolve, o deck de YouTube ganha BPM e key — e com eles beat loop, QUANT e o indicador harmônico deixam de ficar mortos.
+
+**A cobertura é o problema, e é grande.** O AcousticBrainz parou de aceitar submissões em junho de 2022:
+
+| População | Resolve |
+|---|---|
+| Top 600 do ListenBrainz | ~51% |
+| Lançamentos pós-2022 | **0%, para sempre** |
+| Cauda longa ligada a YouTube | ~5% |
+
+Medido aqui em 4 vídeos: Bohemian Rhapsody 133 BPM · 5A, Gangnam Style 131,8 BPM · 10A, e dois uploads obscuros sem nada. Ou seja: **TAP continua sendo o caminho principal**, e a busca é um bônus. Ela nunca sobrescreve um BPM que você tapeou, o resultado é cacheado por vídeo, e as chamadas são enfileiradas a uma por segundo porque o MusicBrainz exige isso.
+
 ## Key e mistura harmônica
 
 Só no Local Audio Mode — o YouTube não entrega PCM, então deck em Modo YT fica sem key, e isso aparece como ausência de badge, não como valor falso.
@@ -138,6 +159,7 @@ A aba **Carregar mídia** existe para o trabalho em lote: abrir uma playlist int
 - Os IDs da playlist vêm do próprio player (`getPlaylist()`).
 - **Títulos**: o player informa o título da faixa carregada assim que ela é cued — sem rede, sem terceiros. Para os itens ainda na fila, o título vem do oEmbed público (`noembed.com`), já que o oEmbed oficial do YouTube responde sem `Access-Control-Allow-Origin` e é inutilizável do browser. Se um bloqueador de conteúdo comer o noembed, a fila mostra o ID cru até a faixa ser carregada, e aí o nome real aparece.
 - **Sem busca por título**: exigiria a YouTube Data API v3 com chave de servidor, o que não roda só no cliente.
+- O MusicBrainz recusa clientes que não se identificam (HTTP 403). Do browser isso não é problema — o próprio user agent serve, e a página não pode sobrescrevê-lo — mas um teste em Node precisa mandar um `User-Agent` próprio.
 - Fila por deck: até 50 faixas, arrasto reordena, botão direito remove, SHUFFLE embaralha, auto-avanço opcional por deck (chip AUTO; respeita loop ativo).
 
 ## Atalhos
