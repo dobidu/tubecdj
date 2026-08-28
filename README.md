@@ -188,7 +188,9 @@ Os 4 pads vêm com one-shots sintetizados (air horn, vinyl brake, siren, clap �
 
 ## Uso e YouTube
 
-A reprodução usa a **IFrame Player API** oficial: os vídeos tocam no player do YouTube, com a marca, os anúncios e a contagem de views que o dono da mídia espera. Nada é baixado, extraído ou recodificado — é por isso que EQ e FX não alcançam o áudio do YouTube, e é justamente essa limitação que mantém o projeto dentro dos Termos de Serviço.
+A reprodução usa a **IFrame Player API** oficial: os vídeos tocam no player do YouTube, com a marca, os anúncios e a contagem de views que o dono da mídia espera. Nada é baixado, extraído ou recodificado — por isso EQ e FX não alcançam o áudio do YouTube.
+
+Dito isso, não afirmo conformidade integral. Um mixer roda **dois players ao mesmo tempo**, controla volume por script e cobre o player enquanto ele está pausado — e as políticas do YouTube têm cláusulas sobre reprodução simultânea automática e sobre obscurecer o player. Use por sua conta; se você pretende algo além de uso pessoal, leia os [YouTube API Services Terms](https://developers.google.com/youtube/terms/api-services-terms-of-service) e as [Developer Policies](https://developers.google.com/youtube/terms/developer-policies) você mesmo.
 
 Você é responsável pelo que toca. Apresentação pública de música gravada costuma exigir licenciamento próprio, independentemente da ferramenta.
 
