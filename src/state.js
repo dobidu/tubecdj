@@ -3,6 +3,9 @@
 
 const PREFIX = 'tubecdj:';
 
+/** A playing deck must stay visible — see the video-floor note in restoreSession. */
+export const MIN_VIDEO_FLOOR = 0.12;
+
 export const CURVES = ['SMOOTH', 'MID', 'SHARP'];
 export const BLENDS = ['NORMAL', 'ADD', 'DIFF', 'LUMA'];
 export const FX_TYPES = ['ECHO', 'REVERB', 'FLANGER', 'FILTER'];
@@ -133,7 +136,9 @@ export function saveSession() {
 export function restoreSession() {
   const p = read('prefs', null);
   if (p) {
-    state.prefs.videoFloor = clampNum(p.videoFloor, 0, 0.6, state.prefs.videoFloor);
+    // Never below MIN_VIDEO_FLOOR: a player that is playing while invisible is
+    // a "background player" under YouTube's Developer Policies.
+    state.prefs.videoFloor = clampNum(p.videoFloor, MIN_VIDEO_FLOOR, 0.6, state.prefs.videoFloor);
     state.prefs.pitchRange = p.pitchRange === 16 ? 16 : 8;
     state.prefs.sharpRamp = clampNum(p.sharpRamp, 0, 200, state.prefs.sharpRamp);
   }

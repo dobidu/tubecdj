@@ -4,7 +4,7 @@
 import {
   state, subscribe, emit, setDeck, setCh, saveSession, restoreSession,
   saveCues, cuesFor, saveBpm, bpmFor, LOOP_LENGTHS, FX_BEATS, MAX_QUEUE,
-  trackKey, analysisFor, saveAnalysis, savePrefs,
+  trackKey, analysisFor, saveAnalysis, savePrefs, MIN_VIDEO_FLOOR,
 } from './state.js';
 import { h, clamp, toast, throttle } from './util.js';
 import { DeckPlayer, PS } from './yt/player.js';
@@ -459,6 +459,7 @@ const app = {
   },
 
   setPref(patch) {
+    if (patch.videoFloor != null) patch.videoFloor = Math.max(MIN_VIDEO_FLOOR, patch.videoFloor);
     Object.assign(state.prefs, patch);
     if (patch.pitchRange) for (const id of IDS) setDeck(id, { pitchRange: patch.pitchRange }, 'pitch');
     emit('prefs');

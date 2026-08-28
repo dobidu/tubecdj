@@ -3,7 +3,7 @@
 // There is no title search — that needs a server-side Data API key.
 
 import { h, fmt } from '../util.js';
-import { state } from '../state.js';
+import { state, MIN_VIDEO_FLOOR } from '../state.js';
 import { parseInput, fetchMeta, thumbUrl } from '../yt/queue.js';
 import { createHSlider } from './fader.js';
 
@@ -44,7 +44,7 @@ export function createLoadScreen({ app }) {
               <span class="readout floor-val">22%</span>
             </div>
             <div class="floor-slot"></div>
-            <div class="pref-note">Opacidade que um deck mantém com o crossfader todo no outro lado. Em 0% ele apaga por completo.</div>
+            <div class="pref-note">Opacidade que um deck mantém com o crossfader todo no outro lado. O mínimo é 12%: as políticas do YouTube proíbem um player que toca sem estar visível.</div>
           </div>
           <div class="pref">
             <div class="pref-head"><span class="pref-name">Faixa do pitch</span></div>
@@ -72,8 +72,9 @@ export function createLoadScreen({ app }) {
   const floorVal = el.querySelector('.floor-val');
   const floor = createHSlider({
     label: 'Piso de opacidade do vídeo',
-    get: () => state.prefs.videoFloor / 0.6,          // slider spans 0–60%
-    set: (v) => app.setPref({ videoFloor: v * 0.6 }),
+    // spans MIN_VIDEO_FLOOR–60%: a deck that is playing may never be invisible
+    get: () => (state.prefs.videoFloor - MIN_VIDEO_FLOOR) / (0.6 - MIN_VIDEO_FLOOR),
+    set: (v) => app.setPref({ videoFloor: MIN_VIDEO_FLOOR + v * (0.6 - MIN_VIDEO_FLOOR) }),
   });
   el.querySelector('.floor-slot').replaceWith(floor.el);
 
