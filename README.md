@@ -52,12 +52,23 @@ A partir daí, todo push em `main` republica sozinho — Actions é gratuito e s
 |---|---|
 | play/pause, cue, hot cues, beat loop (por `seekTo`) | EQ 3 bandas (HI/MID/LOW) |
 | volume composto: TRIM × channel fader × crossfader × master → `setVolume` | filtro bipolar |
-| pitch ±8% / ±16% via `setPlaybackRate` | Beat FX (echo/reverb/flanger/filter) |
-| SYNC por razão de BPM (`bpmMaster / bpmDeck`) | — |
+| velocidade em degraus de **5%** via `setPlaybackRate` | pitch fino (±8%) e, com ele, beatmatching |
+| — | SYNC por razão de BPM |
 | crossfade de vídeo (`opacity`, com piso de 22%) + `mix-blend-mode` no deck B | — |
 
 KEY LOCK fica travado em ON no Modo YT: o YouTube já preserva o pitch percebido ao mudar a velocidade.
 O VU, no Modo YT, é estimado a partir do ganho calculado (não há PCM para medir).
+
+### O teto de 5% — e por que beatmatching não existe no Modo YT
+
+A documentação da IFrame API diz que um rate não suportado é arredondado para o valor mais próximo de `getAvailablePlaybackRates()`. **O player não faz isso.** No código do próprio player, esse array é usado só para o primeiro e o último elemento, como limites, e qualquer múltiplo de **0.05** entre eles é aceito:
+
+```
+pedido 1.037 → 1.00      pedido 1.08 → 1.05      pedido 1.333 → 1.30
+pedido 0.96  → 0.95      pedido 0.92 → 0.90      pedido 99    → 2.00
+```
+
+Ou seja: existe controle de velocidade, mas em degraus de 5%. Numa faixa de 128 BPM os vizinhos são 121,6 e 134,4 BPM — inútil para casar batida. Por isso o fader de pitch e o SYNC aparecem inertes no Modo YT, mostrando a velocidade realmente aplicada (`1.05×`) em vez de uma porcentagem que o player ignora. **Beatmatching de verdade só em Local Audio Mode.**
 
 **Local Audio Mode (por deck)** — arraste um MP3/WAV/M4A/FLAC/OGG sobre o player do deck. O vídeo continua como imagem (mudo) e o áudio local passa pelo grafo completo:
 
@@ -115,6 +126,7 @@ O caminho rápido não sai do booth — cada fila tem um campo de URL no própri
 A aba **Carregar mídia** existe para o trabalho em lote: abrir uma playlist inteira (`?list=`, até 50 faixas) e voltar em algo recente. A leitura da playlist usa um player oculto, então nenhum deck é interrompido para expandir a lista.
 
 - Aceita URL de vídeo (`watch?v=`, `youtu.be`, `/shorts/`, `/embed/`), ID de 11 caracteres e URL de playlist (`?list=`).
+- `getPlaylist()` devolve no máximo **200** vídeos, independente do tamanho real da playlist.
 - Os IDs da playlist vêm do próprio player (`getPlaylist()`).
 - **Títulos**: o player informa o título da faixa carregada assim que ela é cued — sem rede, sem terceiros. Para os itens ainda na fila, o título vem do oEmbed público (`noembed.com`), já que o oEmbed oficial do YouTube responde sem `Access-Control-Allow-Origin` e é inutilizável do browser. Se um bloqueador de conteúdo comer o noembed, a fila mostra o ID cru até a faixa ser carregada, e aí o nome real aparece.
 - **Sem busca por título**: exigiria a YouTube Data API v3 com chave de servidor, o que não roda só no cliente.
@@ -184,13 +196,21 @@ Os 4 pads vêm com one-shots sintetizados (air horn, vinyl brake, siren, clap �
 - Key só no Local Audio Mode, e só como sugestão: material real com bateria pesada confunde o cromagrama mais que as tríades sintéticas do teste.
 - Vídeos com embed bloqueado pelo dono não tocam — o deck reporta o erro do player.
 - Desktop-only por desenho: mínimo de 1320px, sem layout mobile.
+- **iOS/Safari**: o WebKit impõe uma única reprodução audível por vez entre iframes, então tocar dois decks ao mesmo tempo provavelmente não funciona lá. Não testado em hardware.
+- O estado pausado do player mostra a marca do YouTube (título, avatar do canal, "Assista no YouTube"). Isso **não** é removível: `modestbranding` foi descontinuado em 2023 e cobrir o player é proibido pelos termos.
 - Requer um navegador moderno com Web Audio, `OfflineAudioContext`, IndexedDB e `color-mix()` em CSS (Chrome/Edge 111+, Firefox 113+, Safari 16.4+).
 
 ## Uso e YouTube
 
 A reprodução usa a **IFrame Player API** oficial: os vídeos tocam no player do YouTube, com a marca, os anúncios e a contagem de views que o dono da mídia espera. Nada é baixado, extraído ou recodificado — por isso EQ e FX não alcançam o áudio do YouTube.
 
-Dito isso, não afirmo conformidade integral. Um mixer roda **dois players ao mesmo tempo**, controla volume por script e cobre o player enquanto ele está pausado — e as políticas do YouTube têm cláusulas sobre reprodução simultânea automática e sobre obscurecer o player. Use por sua conta; se você pretende algo além de uso pessoal, leia os [YouTube API Services Terms](https://developers.google.com/youtube/terms/api-services-terms-of-service) e as [Developer Policies](https://developers.google.com/youtube/terms/developer-policies) você mesmo.
+Três decisões de produto vêm diretamente da [Required Minimum Functionality](https://developers.google.com/youtube/terms/required-minimum-functionality) e das [Developer Policies](https://developers.google.com/youtube/terms/developer-policies):
+
+- **Nada é desenhado por cima do player.** A RMF proíbe overlays na frente de qualquer parte do player, sem exceção para o estado pausado. Por isso o chrome do YouTube aparece quando um deck está parado, e os indicadores de estado ficam no cabeçalho do deck, fora da área de vídeo.
+- **O iframe continua clicável.** Bloquear os controles do player cai em "block any portion or functionality of a YouTube player".
+- **O auto-avanço nunca inicia dois decks ao mesmo tempo.** Um `playVideo()` por script conta como reprodução automática, e a RMF proíbe mais de um player em reprodução automática simultânea. Se o outro deck estiver tocando, a próxima faixa é carregada e fica em espera.
+
+Ainda assim: dois players audíveis ao mesmo tempo, iniciados por você, é o caso de uso central e não é coberto por essas cláusulas — mas leia os termos você mesmo antes de usar isto para qualquer coisa além de uso pessoal.
 
 Você é responsável pelo que toca. Apresentação pública de música gravada costuma exigir licenciamento próprio, independentemente da ferramenta.
 
