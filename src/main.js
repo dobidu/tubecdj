@@ -380,13 +380,17 @@ const app = {
     const gaps = [];
     for (let i = 1; i < tapTimes.length; i++) gaps.push(tapTimes[i] - tapTimes[i - 1]);
     const avg = gaps.reduce((a, b) => a + b, 0) / gaps.length;
-    const bpm = clamp(60000 / avg, 60, 200);
-    state.masterBpm = Math.round(bpm * 10) / 10;
-    const d = state.deck[state.focus];
-    if (!d.bpm) {
-      setDeck(state.focus, { bpm: state.masterBpm, bpmSource: 'TAP' }, 'bpm');
-      saveBpm(d.videoId, state.masterBpm);
-    }
+    const bpm = Math.round(clamp(60000 / avg, 60, 200) * 10) / 10;
+    state.masterBpm = bpm;
+
+    // Tapping is how a DJ *corrects* a tempo, so it always writes to the
+    // focused deck — refusing to overwrite an existing value made a wrong
+    // BPM impossible to fix.
+    const id = state.focus;
+    const d = state.deck[id];
+    setDeck(id, { bpm, bpmSource: 'TAP' }, 'bpm');
+    saveBpm(d.videoId, bpm);
+    toast(`Deck ${id}: ${bpm.toFixed(1)} BPM · ${tapTimes.length} toques`);
     emit('bpm');
     persist();
   },
