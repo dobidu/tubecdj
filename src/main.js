@@ -240,6 +240,23 @@ async function sendPlaylist(id, listId, mode) {
   }
 }
 
+/**
+ * More than half of the player visible, on a visible page. The same policy
+ * that limits automatic playback to one deck also requires this before a
+ * scripted play may start.
+ */
+function mostlyVisible(id) {
+  if (document.visibilityState !== 'visible') return false;
+  const el = cards[id]?.el.querySelector('.deck-video');
+  if (!el) return false;
+  const r = el.getBoundingClientRect();
+  if (r.width <= 0 || r.height <= 0) return false;
+  const vw = window.innerWidth || 0, vh = window.innerHeight || 0;
+  const w = Math.max(0, Math.min(r.right, vw) - Math.max(r.left, 0));
+  const h = Math.max(0, Math.min(r.bottom, vh) - Math.max(r.top, 0));
+  return (w * h) / (r.width * r.height) > 0.5;
+}
+
 /** A deck is idle when it has nothing loaded or is not playing. */
 const isDeckIdle = (id) => {
   const d = state.deck[id];
@@ -654,8 +671,12 @@ function autoAdvance(id) {
   if (next < 0 || d.queue.length < 2) { tPause(id); return; }
   const wasPlaying = d.playing;
   app.loadQueueItem(id, next);
-  if (wasPlaying && !otherBusy) setTimeout(() => tPlay(id), 400);
-  else if (wasPlaying) toast(`Deck ${id}: próxima faixa carregada e em espera (o outro deck está tocando)`);
+  if (wasPlaying && !otherBusy && mostlyVisible(id)) setTimeout(() => tPlay(id), 400);
+  else if (wasPlaying) {
+    toast(otherBusy
+      ? `Deck ${id}: próxima faixa carregada e em espera (o outro deck está tocando)`
+      : `Deck ${id}: próxima faixa carregada — aperte PLAY (o deck precisa estar visível)`);
+  }
 }
 
 /* ------------------------------------------------------------- keyboard */
