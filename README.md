@@ -50,7 +50,7 @@ A partir daí, todo push em `main` republica sozinho — Actions é gratuito e s
 
 | Real | Inerte (sinalizado na UI com opacidade + tooltip) |
 |---|---|
-| play/pause, cue, hot cues, beat loop (por `seekTo`) | EQ 3 bandas (HI/MID/LOW) |
+| play/pause, cue, hot cues e beat loop — **com ~2 s de imprecisão** | EQ 3 bandas (HI/MID/LOW) |
 | volume composto: TRIM × channel fader × crossfader × master → `setVolume` | filtro bipolar |
 | velocidade em degraus de **5%** via `setPlaybackRate` | pitch fino (±8%) e, com ele, beatmatching |
 | — | SYNC por razão de BPM |
@@ -58,6 +58,14 @@ A partir daí, todo push em `main` republica sozinho — Actions é gratuito e s
 
 KEY LOCK fica travado em ON no Modo YT: o YouTube já preserva o pitch percebido ao mudar a velocidade.
 O VU, no Modo YT, é estimado a partir do ganho calculado (não há PCM para medir).
+
+`seekTo` encosta no keyframe mais próximo — a documentação admite *"usually no more than around two seconds"* antes do alvo. Então cue e loop no Modo YT são regiões, não pontos, e QUANT tem pouco a fazer. Os tooltips dizem isso em cada controle.
+
+### Antes do primeiro play, o deck é nosso
+
+O iframe do YouTube **só é criado quando você manda tocar**. Até lá o deck mostra a capa do próprio vídeo com um botão de play. Isso evita o estado *cued* cheio de marca do YouTube de forma legítima — cobrir um player existente é proibido, não ter criado nenhum ainda não é — e mantém 1,6 MB de player fora do carregamento inicial.
+
+Depois do primeiro play, o chrome do estado pausado aparece e não há o que fazer.
 
 ### O teto de 5% — e por que beatmatching não existe no Modo YT
 

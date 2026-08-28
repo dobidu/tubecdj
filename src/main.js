@@ -50,10 +50,53 @@ function ensureAudio() {
 
 const isLocal = (id) => state.deck[id].source === 'local' && !!local[id];
 
-function tPlay(id) {
-  if (isLocal(id)) { local[id].play(); players[id]?.play(); }
-  else players[id]?.play();
+/**
+ * Build the deck's player on first use.
+ *
+ * Nothing is instantiated at boot: until you press play, the deck shows our
+ * own cover instead. That is the only compliant way to avoid the branded cued
+ * state — covering a player that exists is forbidden, not creating one yet is
+ * not — and it keeps the 1.6 MB player bundle off the initial load.
+ */
+const pending = {};
+async function ensurePlayer(id) {
+  if (players[id]) return players[id];
+  if (pending[id]) return pending[id];
+  pending[id] = (async () => {
+    try {
+      players[id] = await new DeckPlayer(cards[id].mount, deckHandlers(id)).init();
+      emit('player');
+      return players[id];
+    } catch (err) {
+      toast('IFrame API indisponível: ' + err.message);
+      return null;
+    } finally {
+      delete pending[id];
+    }
+  })();
+  return pending[id];
+}
+
+/** Make sure the player holds the deck's current track. */
+function syncPlayerMedia(p, d, autoplay) {
+  if (p.loadedVideoId === d.videoId) return false;
+  p.load(d.videoId, { start: d.pos, autoplay });
+  return true;
+}
+
+async function tPlay(id) {
+  const d = state.deck[id];
+  if (isLocal(id)) {
+    local[id].play();
+    players[id]?.play();
+    setDeck(id, { playing: true }, 'transport');
+    return;
+  }
+  if (!d.videoId) { toast(`Deck ${id} vazio`); return; }
   setDeck(id, { playing: true }, 'transport');
+  const p = await ensurePlayer(id);
+  if (!p) { setDeck(id, { playing: false }, 'transport'); return; }
+  if (!syncPlayerMedia(p, d, true)) p.play();
 }
 function tPause(id) {
   if (isLocal(id)) { local[id].pause(); players[id]?.pause(); }
@@ -101,6 +144,7 @@ async function loadVideo(id, videoId, { title, autoplay = false, startAt = 0 } =
     loop: { on: false, inSec: null, len: state.deck[id].loop.len },
   }, 'load');
   p?.setMuted(false);
+  // no player yet means the deck is still showing its cover — nothing to load
   p?.load(videoId, { start: startAt, autoplay });
   if (!title) {
     const meta = await fetchMeta(videoId);
@@ -208,6 +252,9 @@ const tapTimes = [];
 
 const app = {
   focusDeck(id) { if (state.focus !== id) { state.focus = id; emit('focus'); } },
+
+  /** True once this deck's iframe exists — the cover shows until then. */
+  hasPlayer: (id) => !!players[id],
 
   goScreen(screen) {
     state.screen = screen;
@@ -685,10 +732,8 @@ restoreSession();
 app.goScreen(state.screen === 'load' ? 'load' : 'booth');
 requestAnimationFrame(tick);
 
-(async () => {
-  for (const id of IDS) {
-    try {
-      players[id] = await new DeckPlayer(cards[id].mount, {
+function deckHandlers(id) {
+  return {
         onStateChange: (code) => {
           const d = state.deck[id];
           if (isLocal(id)) return;                 // local track owns transport
@@ -707,19 +752,13 @@ requestAnimationFrame(tick);
           setDeck(id, { playing: false }, 'yt');
           toast(`Deck ${id}: o navegador bloqueou a reprodução automática — aperte PLAY`);
         },
-        onError: (code) => toast(`Deck ${id}: vídeo indisponível (erro ${code})`),
-      }).init();
-    } catch (err) {
-      toast('IFrame API indisponível: ' + err.message);
-      return;
-    }
-  }
-  // restore decks paused at their saved position
-  for (const id of IDS) {
-    const d = state.deck[id];
-    if (d.videoId) {
-      players[id].load(d.videoId, { start: d.pos, autoplay: false });
-      players[id].setVolume(0);
-    }
-  }
-})();
+        onError: (code) => {
+          const why = code === 153 ? 'identificação de origem recusada'
+            : code === 101 || code === 150 ? 'o dono desativou o embed'
+            : code === 100 ? 'vídeo removido ou privado'
+            : code === 2 ? 'ID inválido' : `erro ${code}`;
+          toast(`Deck ${id}: ${why}`);
+          setDeck(id, { playing: false }, 'yt');
+        },
+  };
+}

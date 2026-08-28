@@ -57,6 +57,7 @@ export class DeckPlayer {
 
   load(videoId, { start = 0, autoplay = false } = {}) {
     if (!this.ready) return;
+    this.loadedVideoId = videoId;
     if (autoplay) this.player.loadVideoById({ videoId, startSeconds: start });
     else this.player.cueVideoById({ videoId, startSeconds: start });
   }

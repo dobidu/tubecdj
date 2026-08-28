@@ -86,6 +86,14 @@ body{overflow-x:auto}
 .deck-head .dot.live{background:var(--ok)}
 .deck-head .badge.time{color:var(--text-2)}
 .deck-video.drop{outline:2px dashed var(--c);outline-offset:-4px}
+.deck-video .facade{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;flex-direction:column;gap:8px;cursor:pointer;border:0;padding:0;background:none}
+.deck-video .facade .cap{position:absolute;inset:0;background-size:cover;background-position:center}
+.deck-video .facade::after{content:'';position:absolute;inset:0;background:linear-gradient(180deg,#08090BA6,#08090BD9)}
+.deck-video .facade .go{position:relative;width:52px;height:52px;border-radius:50%;border:2px solid var(--c);display:flex;align-items:center;justify-content:center;background:#0B0D0FB3;transition:transform .16s cubic-bezier(.22,1,.36,1),box-shadow .16s cubic-bezier(.22,1,.36,1)}
+.deck-video .facade .go i{width:0;height:0;border-left:16px solid var(--c);border-top:10px solid transparent;border-bottom:10px solid transparent;margin-left:5px}
+.deck-video .facade .hint{position:relative;font-size:10px;letter-spacing:.18em;text-transform:uppercase;color:var(--text-3)}
+.deck-video .facade:hover .go{transform:scale(1.06);box-shadow:0 0 22px color-mix(in srgb,var(--c) 45%,transparent)}
+.deck-video .facade:focus-visible{outline:2px solid var(--c);outline-offset:-4px}
 .queue{width:214px;flex:none;display:flex;flex-direction:column;background:var(--panel-2);border:1px solid var(--line);border-radius:6px;overflow:hidden}
 .queue-head{display:flex;align-items:center;justify-content:space-between;padding:7px 9px;border-bottom:1px solid var(--line);flex:none}
 .queue-head .act{font-family:var(--mono);font-size:9px;color:var(--text-4);cursor:pointer;user-select:none;border:1px solid var(--line-2);border-radius:3px;padding:2px 4px}

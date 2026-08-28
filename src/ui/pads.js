@@ -24,9 +24,12 @@ export function createPads({ deckId, app }) {
       const on = hot ? d.cues[i] != null : (d.loop.on && d.loop.len === LOOP_LENGTHS[i]);
       pads[i].classList.toggle('on', !!on);
       pads[i].setAttribute('aria-pressed', on ? 'true' : 'false');
-      pads[i].title = hot
+      // seekTo lands on the nearest keyframe — the docs say up to ~2 s early —
+      // so a cue on a YouTube deck is a region, not a point.
+      const sloppy = d.source !== 'local' ? ' · precisão ~2 s no Modo YT (o seek encosta no keyframe)' : '';
+      pads[i].title = (hot
         ? (d.cues[i] != null ? 'Jump (Shift+clique apaga)' : 'Definir hot cue')
-        : 'Beat loop ' + label;
+        : 'Beat loop ' + label) + sloppy;
     }
   }
   update();

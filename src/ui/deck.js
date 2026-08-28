@@ -8,6 +8,7 @@ import { createPads } from './pads.js';
 import { createPitchFader } from './fader.js';
 import { pitchPercent, effectiveBpm } from '../mix/sync.js';
 import { relation } from '../mix/harmony.js';
+import { thumbUrl } from '../yt/queue.js';
 import { blendName } from '../video/blend.js';
 
 const AUDIO_RE = /^audio\//;
@@ -28,6 +29,11 @@ export function createDeckCard({ deckId, color, app }) {
         </div>
         <div class="deck-video">
           <div class="stage"><div class="yt-mount"></div></div>
+          <button type="button" class="facade hide">
+            <span class="cap"></span>
+            <span class="go"><i></i></span>
+            <span class="hint">tocar</span>
+          </button>
           <div class="empty">
             <div class="k">DECK ${deckId} · SEM MÍDIA</div>
             <div class="v">Cole uma URL em “Carregar mídia” ou solte um MP3/WAV aqui</div>
@@ -43,6 +49,8 @@ export function createDeckCard({ deckId, color, app }) {
   const stage = el.querySelector('.stage');
   const mount = el.querySelector('.yt-mount');
   const empty = el.querySelector('.empty');
+  const facade = el.querySelector('.facade');
+  const facadeCap = facade.querySelector('.cap');
   const titleEl = el.querySelector('.deck-title');
   const srcEl = el.querySelector('.badge.src');
   const keyEl = el.querySelector('.badge.key');
@@ -64,6 +72,7 @@ export function createDeckCard({ deckId, color, app }) {
     if (text) app.send(text, deckId, 'now');   // dropped on the player = play it here
   });
   video.addEventListener('click', () => app.focusDeck(deckId));
+  facade.addEventListener('click', () => { app.focusDeck(deckId); app.togglePlay(deckId); });
 
   function update() {
     const d = state.deck[deckId];
@@ -89,6 +98,20 @@ export function createDeckCard({ deckId, color, app }) {
     const b = 'BLEND · ' + blendName(state.blend);
     if (blendEl.textContent !== b) blendEl.textContent = b;
     empty.classList.toggle('hide', !!d.videoId || d.source === 'local');
+
+    // Until the first play there is no iframe at all, so our own cover is not
+    // an overlay on a player — it is the page. This is the only compliant way
+    // to avoid the branded cued state, and it saves loading the 1.6 MB player.
+    const cued = !!d.videoId && d.source !== 'local' && !app.hasPlayer(deckId);
+    facade.classList.toggle('hide', !cued);
+    if (cued) {
+      const url = thumbUrl(d.videoId);
+      if (facadeCap.dataset.src !== url) {
+        facadeCap.style.backgroundImage = `url("${url}")`;
+        facadeCap.dataset.src = url;
+      }
+      facade.title = `Tocar ${d.title}`;
+    }
 
     queue.update();
   }
@@ -207,6 +230,13 @@ export function createDeckPanel({ deckId, color, app }) {
     const ll = d.loop.len < 1 ? '1/' + Math.round(1 / d.loop.len) : d.loop.len + ' BT';
     if (lenEl.textContent !== ll) lenEl.textContent = ll;
     loopEl.classList.toggle('on', d.loop.on);
+    const looseSeek = d.source !== 'local';
+    loopEl.title = looseSeek
+      ? 'Loop por seek: no Modo YT o ponto de volta encosta no keyframe (~2 s), então o loop não fecha na batida. Preciso só em Local Audio Mode.'
+      : 'Loop na batida';
+    quantEl.title = looseSeek
+      ? 'Quantize tem pouco efeito no Modo YT: o seek já erra ~2 s. Preciso só em Local Audio Mode.'
+      : 'Arredonda cues, loops e seek para a batida mais próxima';
     loopEl.setAttribute('aria-pressed', d.loop.on ? 'true' : 'false');
 
     const bpm = effectiveBpm(d, state.masterBpm);
