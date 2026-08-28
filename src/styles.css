@@ -88,6 +88,9 @@ body{overflow-x:auto}
 .deck-video .dot.live{background:var(--ok)}
 .deck-video .pill{font-family:var(--mono);font-size:10px;color:var(--text-2);background:#000000AA;padding:2px 5px;border-radius:3px}
 .deck-video.drop{outline:2px dashed var(--c);outline-offset:-4px}
+.deck-video .poster{position:absolute;inset:0;background-size:cover;background-position:center;display:flex;align-items:center;justify-content:center;pointer-events:none}
+.deck-video .poster::before{content:'';position:absolute;inset:0;background:linear-gradient(180deg,#08090BB3,#08090BE0)}
+.deck-video .poster i{position:relative;width:0;height:0;border-left:18px solid var(--c);border-top:12px solid transparent;border-bottom:12px solid transparent;margin-left:5px;opacity:.55}
 
 .queue{width:214px;flex:none;display:flex;flex-direction:column;background:var(--panel-2);border:1px solid var(--line);border-radius:6px;overflow:hidden}
 .queue-head{display:flex;align-items:center;justify-content:space-between;padding:7px 9px;border-bottom:1px solid var(--line);flex:none}

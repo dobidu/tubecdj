@@ -8,6 +8,7 @@ import { createPads } from './pads.js';
 import { createPitchFader } from './fader.js';
 import { pitchPercent, effectiveBpm } from '../mix/sync.js';
 import { relation } from '../mix/harmony.js';
+import { thumbUrl } from '../yt/queue.js';
 import { blendName } from '../video/blend.js';
 
 const AUDIO_RE = /^audio\//;
@@ -25,6 +26,7 @@ export function createDeckCard({ deckId, color, app }) {
         </div>
         <div class="deck-video">
           <div class="stage"><div class="yt-mount"></div></div>
+          <div class="poster hide"><i></i></div>
           <div class="empty">
             <div class="k">DECK ${deckId} · SEM MÍDIA</div>
             <div class="v">Cole uma URL em “Carregar mídia” ou solte um MP3/WAV aqui</div>
@@ -42,6 +44,7 @@ export function createDeckCard({ deckId, color, app }) {
   const stage = el.querySelector('.stage');
   const mount = el.querySelector('.yt-mount');
   const empty = el.querySelector('.empty');
+  const poster = el.querySelector('.poster');
   const titleEl = el.querySelector('.deck-title');
   const srcEl = el.querySelector('.badge.src');
   const keyEl = el.querySelector('.badge.key');
@@ -88,6 +91,20 @@ export function createDeckCard({ deckId, color, app }) {
     const b = 'BLEND · ' + blendName(state.blend);
     if (blendEl.textContent !== b) blendEl.textContent = b;
     empty.classList.toggle('hide', !!d.videoId || d.source === 'local');
+
+    // A cued or paused YouTube player draws its own title bar, channel avatar,
+    // share button and a big red play button. None of that belongs in a booth,
+    // and there is no player flag left to turn it off, so cover it with the
+    // video's own thumbnail until playback actually starts.
+    const covered = !!d.videoId && !d.playing;
+    poster.classList.toggle('hide', !covered);
+    if (covered) {
+      const url = thumbUrl(d.videoId);
+      if (poster.dataset.src !== url) {
+        poster.style.backgroundImage = `url("${url}")`;
+        poster.dataset.src = url;
+      }
+    }
     queue.update();
   }
   update();
