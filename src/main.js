@@ -8,7 +8,7 @@ import {
 } from './state.js';
 import { h, clamp, toast, throttle } from './util.js';
 import { DeckPlayer, PS } from './yt/player.js';
-import { parseInput, fetchMeta, newItem, addToQueue, moveInQueue, shuffleQueue, removeFromQueue, nextIndex } from './yt/queue.js';
+import { parseInput, fetchMeta, newItem, addToQueue, moveInQueue, shuffleQueue, removeFromQueue, nextIndex, renameInQueues } from './yt/queue.js';
 import { MasterBus, ChannelStrip, LocalTrack, resumeAudio } from './audio/graph.js';
 import { FXUnit } from './audio/fx.js';
 import { Sampler } from './audio/sampler.js';
@@ -108,6 +108,25 @@ async function loadVideo(id, videoId, { title, autoplay = false, startAt = 0 } =
   }
   pushHistory(videoId, state.deck[id].title);
   saveSession();
+}
+
+/**
+ * The player knows the real title once the video is cued, and that needs no
+ * network call — so it beats oEmbed, which a content blocker can eat.
+ * Only ever replaces a placeholder, never a title already on screen.
+ */
+function adoptPlayerTitle(id) {
+  const p = players[id];
+  const d = state.deck[id];
+  if (!p?.ready || d.source === 'local' || !d.videoId) return;
+  const title = (p.videoData()?.title || '').trim();
+  if (!title || title === d.title) return;
+  const placeholder = !d.title.trim() || d.title === '—' || d.title === d.videoId;
+  if (!placeholder) return;
+  setDeck(id, { title }, 'yt');
+  renameInQueues(d.videoId, title);
+  pushHistory(d.videoId, title);
+  persist();
 }
 
 function pushHistory(videoId, title) {
@@ -655,10 +674,7 @@ requestAnimationFrame(tick);
           else if (code === PS.BUFFERING) setDeck(id, { buffering: true }, 'yt');
           else if (code === PS.PAUSED || code === PS.ENDED) setDeck(id, { playing: false, buffering: false }, 'yt');
           else if (code === PS.CUED) setDeck(id, { buffering: false }, 'yt');
-          if (code === PS.PLAYING && !d.title.trim()) {
-            const data = players[id].videoData();
-            if (data.title) setDeck(id, { title: data.title }, 'yt');
-          }
+          if (code === PS.CUED || code === PS.PLAYING || code === PS.BUFFERING) adoptPlayerTitle(id);
         },
         onEnded: () => autoAdvance(id),
         onError: (code) => toast(`Deck ${id}: vídeo indisponível (erro ${code})`),

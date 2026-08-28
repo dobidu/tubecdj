@@ -43,8 +43,24 @@ export async function fetchMeta(videoId) {
     metaCache.set(videoId, meta);
     return meta;
   } catch {
-    metaCache.set(videoId, fallback);
+    // Deliberately not cached: a blocked or flaky request must not pin this
+    // video to its raw id for the rest of the session.
     return fallback;
+  }
+}
+
+/** Replace a placeholder title in every deck queue once the real one shows up. */
+export function renameInQueues(videoId, title) {
+  for (const id of ['A', 'B']) {
+    const d = state.deck[id];
+    let touched = false;
+    const queue = d.queue.map((q) => {
+      if (q.videoId !== videoId || q.title === title) return q;
+      if (q.title && q.title !== videoId) return q;   // keep a real title
+      touched = true;
+      return { ...q, title };
+    });
+    if (touched) setDeck(id, { queue }, 'queue');
   }
 }
 

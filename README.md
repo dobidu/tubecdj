@@ -7,6 +7,8 @@ O que o navegador permite fazer com áudio do YouTube é limitado, e a interface
 
 **No ar:** <https://dobidu.github.io/tubecdj/>
 
+![TubeCDJ — dois decks de YouTube, waveforms e mixer no layout FLX2](docs/screenshot.png)
+
 ## Rodar
 
 ```bash
@@ -113,7 +115,8 @@ O caminho rápido não sai do booth — cada fila tem um campo de URL no própri
 A aba **Carregar mídia** existe para o trabalho em lote: abrir uma playlist inteira (`?list=`, até 50 faixas) e voltar em algo recente. A leitura da playlist usa um player oculto, então nenhum deck é interrompido para expandir a lista.
 
 - Aceita URL de vídeo (`watch?v=`, `youtu.be`, `/shorts/`, `/embed/`), ID de 11 caracteres e URL de playlist (`?list=`).
-- Título e thumbnail vêm do oEmbed público (`noembed.com`); os IDs da playlist vêm do próprio player (`getPlaylist()`).
+- Os IDs da playlist vêm do próprio player (`getPlaylist()`).
+- **Títulos**: o player informa o título da faixa carregada assim que ela é cued — sem rede, sem terceiros. Para os itens ainda na fila, o título vem do oEmbed público (`noembed.com`), já que o oEmbed oficial do YouTube responde sem `Access-Control-Allow-Origin` e é inutilizável do browser. Se um bloqueador de conteúdo comer o noembed, a fila mostra o ID cru até a faixa ser carregada, e aí o nome real aparece.
 - **Sem busca por título**: exigiria a YouTube Data API v3 com chave de servidor, o que não roda só no cliente.
 - Fila por deck: até 50 faixas, arrasto reordena, botão direito remove, SHUFFLE embaralha, auto-avanço opcional por deck (chip AUTO; respeita loop ativo).
 
