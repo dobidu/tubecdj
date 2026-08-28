@@ -46,6 +46,8 @@ const deck = (id) => ({
   cues: new Array(8).fill(null),   // seconds or null
   loop: { on: false, inSec: null, len: 4 },
   bend: 0,               // temporary rate offset from jog
+  rateApplied: 1,        // rate the player actually used (YouTube quantizes)
+  rateInert: false,      // true when the requested rate was quantized away
   jogAngle: 0,
   peaks: null,           // Float32Array (local mode) or null
   waveKind: 'grid',      // 'grid' | 'audio'

@@ -253,6 +253,10 @@ const app = {
 
   toggleSync(id) {
     const d = state.deck[id];
+    if (!d.sync && d.source !== 'local') {
+      toast('SYNC não funciona no Modo YT: o YouTube só muda a velocidade de 5% em 5%. Use Local Audio Mode.');
+      return;
+    }
     if (!d.sync && (!d.bpm || !state.masterBpm)) { toast('BPM desconhecido — use TAP ou solte um arquivo local'); return; }
     setDeck(id, { sync: !d.sync }, 'sync');
     persist();
@@ -558,6 +562,8 @@ function tick() {
       d.pos = tr.pos;
       d.dur = tr.duration;
       tr.setRate(rate);
+      d.rateApplied = rate;      // Web Audio honours any rate
+      d.rateInert = false;
       p?.setRate(rate);
       if (d.playing && d.pos >= d.dur - 0.05) autoAdvance(id);
     } else if (p?.ready) {
@@ -565,6 +571,9 @@ function tick() {
       const dur = p.duration;
       if (dur) d.dur = dur;
       p.setRate(rate);
+      // YouTube quantizes the rate, so record what it really did
+      d.rateApplied = p.snapRate(rate);
+      d.rateInert = Math.abs(d.rateApplied - rate) > 0.002;
       const out = loopOut(d);
       if (d.loop.on && out != null && d.pos >= out) p.seek(d.loop.inSec);
     }
@@ -586,11 +595,19 @@ function autoAdvance(id) {
   const d = state.deck[id];
   if (d.loop.on) return;
   if (!d.autoNext) { tPause(id); return; }
+
+  // A scripted playVideo() counts as an automatic playback, and YouTube's
+  // Required Minimum Functionality forbids more than one player auto-playing
+  // at the same time. Loading the next track is fine; starting it is not,
+  // while the other deck is running.
+  const other = state.deck[id === 'A' ? 'B' : 'A'];
+  const otherBusy = other.playing;
   const next = nextIndex(id);
   if (next < 0 || d.queue.length < 2) { tPause(id); return; }
   const wasPlaying = d.playing;
   app.loadQueueItem(id, next);
-  if (wasPlaying) setTimeout(() => tPlay(id), 400);
+  if (wasPlaying && !otherBusy) setTimeout(() => tPlay(id), 400);
+  else if (wasPlaying) toast(`Deck ${id}: próxima faixa carregada e em espera (o outro deck está tocando)`);
 }
 
 /* ------------------------------------------------------------- keyboard */
@@ -677,10 +694,18 @@ requestAnimationFrame(tick);
           if (code === PS.PLAYING) setDeck(id, { playing: true, buffering: false }, 'yt');
           else if (code === PS.BUFFERING) setDeck(id, { buffering: true }, 'yt');
           else if (code === PS.PAUSED || code === PS.ENDED) setDeck(id, { playing: false, buffering: false }, 'yt');
-          else if (code === PS.CUED) setDeck(id, { buffering: false }, 'yt');
+          else if (code === PS.CUED) {
+            setDeck(id, { buffering: false }, 'yt');
+            // cueVideoById/loadVideoById reset the rate to 1
+            players[id].setRate(deckRate(state.deck[id], state.masterBpm));
+          }
           if (code === PS.CUED || code === PS.PLAYING || code === PS.BUFFERING) adoptPlayerTitle(id);
         },
         onEnded: () => autoAdvance(id),
+        onAutoplayBlocked: () => {
+          setDeck(id, { playing: false }, 'yt');
+          toast(`Deck ${id}: o navegador bloqueou a reprodução automática — aperte PLAY`);
+        },
         onError: (code) => toast(`Deck ${id}: vídeo indisponível (erro ${code})`),
       }).init();
     } catch (err) {

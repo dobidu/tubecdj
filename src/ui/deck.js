@@ -8,7 +8,6 @@ import { createPads } from './pads.js';
 import { createPitchFader } from './fader.js';
 import { pitchPercent, effectiveBpm } from '../mix/sync.js';
 import { relation } from '../mix/harmony.js';
-import { thumbUrl } from '../yt/queue.js';
 import { blendName } from '../video/blend.js';
 
 const AUDIO_RE = /^audio\//;
@@ -19,20 +18,20 @@ export function createDeckCard({ deckId, color, app }) {
       <div class="deck-main">
         <div class="deck-head">
           <div class="deck-tag">${deckId}</div>
+          <div class="dot" title="Estado do deck"></div>
           <div class="deck-title">—</div>
           <div class="badge key hide"></div>
+          <div class="badge time mono">0:00 / 0:00</div>
+          <div class="badge blend">BLEND · NORMAL</div>
           <div class="badge src">YT</div>
           <div class="badge res">1080p</div>
         </div>
         <div class="deck-video">
           <div class="stage"><div class="yt-mount"></div></div>
-          <div class="poster hide"><i></i></div>
           <div class="empty">
             <div class="k">DECK ${deckId} · SEM MÍDIA</div>
             <div class="v">Cole uma URL em “Carregar mídia” ou solte um MP3/WAV aqui</div>
           </div>
-          <div class="osd-l"><div class="dot"></div><div class="pill time">0:00 / 0:00</div></div>
-          <div class="osd-r"><div class="pill blend">BLEND · NORMAL</div></div>
         </div>
       </div>
     </div>`);
@@ -44,13 +43,12 @@ export function createDeckCard({ deckId, color, app }) {
   const stage = el.querySelector('.stage');
   const mount = el.querySelector('.yt-mount');
   const empty = el.querySelector('.empty');
-  const poster = el.querySelector('.poster');
   const titleEl = el.querySelector('.deck-title');
   const srcEl = el.querySelector('.badge.src');
   const keyEl = el.querySelector('.badge.key');
   const dot = el.querySelector('.dot');
-  const timeEl = el.querySelector('.pill.time');
-  const blendEl = el.querySelector('.pill.blend');
+  const timeEl = el.querySelector('.badge.time');
+  const blendEl = el.querySelector('.badge.blend');
 
   video.addEventListener('dragover', (e) => {
     e.preventDefault();
@@ -92,19 +90,6 @@ export function createDeckCard({ deckId, color, app }) {
     if (blendEl.textContent !== b) blendEl.textContent = b;
     empty.classList.toggle('hide', !!d.videoId || d.source === 'local');
 
-    // A cued or paused YouTube player draws its own title bar, channel avatar,
-    // share button and a big red play button. None of that belongs in a booth,
-    // and there is no player flag left to turn it off, so cover it with the
-    // video's own thumbnail until playback actually starts.
-    const covered = !!d.videoId && !d.playing;
-    poster.classList.toggle('hide', !covered);
-    if (covered) {
-      const url = thumbUrl(d.videoId);
-      if (poster.dataset.src !== url) {
-        poster.style.backgroundImage = `url("${url}")`;
-        poster.dataset.src = url;
-      }
-    }
     queue.update();
   }
   update();
@@ -157,6 +142,7 @@ export function createDeckPanel({ deckId, color, app }) {
   const syncEl = el.querySelector('.sync');
   const keyEl = el.querySelector('.keylock');
   const quantEl = el.querySelector('.quant');
+  const pitchWrap = el.querySelector('.pitch-wrap');
   const pitchVal = el.querySelector('.pitch-val');
   const pitchRange = el.querySelector('.pitch-range');
   const playEl = el.querySelector('.play-btn');
@@ -181,7 +167,11 @@ export function createDeckPanel({ deckId, color, app }) {
     el.classList.toggle('focus', state.focus === deckId);
     syncEl.classList.toggle('on', d.sync);
     syncEl.setAttribute('aria-pressed', d.sync ? 'true' : 'false');
-    syncEl.title = d.bpm > 0 ? 'Casar BPM com o master' : 'BPM desconhecido — use TAP ou Local Audio Mode';
+    const syncDead = d.source !== 'local';
+    syncEl.classList.toggle('inert', syncDead);
+    syncEl.title = syncDead
+      ? 'Indisponível no Modo YT: casar BPM exige velocidade contínua, e o YouTube só anda de 5% em 5%. Use Local Audio Mode.'
+      : d.bpm > 0 ? 'Casar BPM com o master' : 'BPM desconhecido — use TAP';
     keyEl.classList.toggle('on', d.keylock);
     keyEl.setAttribute('aria-pressed', d.keylock ? 'true' : 'false');
     keyEl.classList.toggle('locked', d.source !== 'local');
@@ -191,12 +181,21 @@ export function createDeckPanel({ deckId, color, app }) {
     quantEl.classList.toggle('on', d.quantize);
     quantEl.setAttribute('aria-pressed', d.quantize ? 'true' : 'false');
 
+    // YouTube rounds any unsupported rate toward 1, so a DJ-sized pitch move
+    // has no effect at all there. Say so instead of showing a percentage the
+    // player silently ignores.
+    const ytRate = d.source !== 'local';
     const pct = pitchPercent(d);
     const label = (pct >= 0 ? '+' : '') + pct.toFixed(2) + '%';
-    if (pitchVal.textContent !== label) pitchVal.textContent = label;
-    const rl = `PITCH ±${d.pitchRange}%`;
+    const shown = ytRate ? `${d.rateApplied.toFixed(2)}×` : label;
+    if (pitchVal.textContent !== shown) pitchVal.textContent = shown;
+    const rl = ytRate ? 'YT · PASSO 5%' : `PITCH ±${d.pitchRange}%`;
     if (pitchRange.textContent !== rl) pitchRange.textContent = rl;
-    pitch.update(label);
+    pitchWrap.classList.toggle('inert', ytRate);
+    pitchWrap.title = ytRate
+      ? `Modo YT: o player quantiza a velocidade em degraus de 5% (…0.95, 1.00, 1.05…). Pedido ${label} → aplicado ${d.rateApplied.toFixed(2)}×. Pitch fino, e portanto beatmatching, só em Local Audio Mode.`
+      : 'Pitch (Shift arrasta na faixa larga)';
+    pitch.update(shown);
 
     playEl.classList.toggle('on', d.playing);
     playEl.setAttribute('aria-pressed', d.playing ? 'true' : 'false');

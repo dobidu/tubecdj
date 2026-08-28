@@ -48,6 +48,7 @@ export class DeckPlayer {
             if (e.data === PS.ENDED) this.handlers.onEnded?.(this);
           },
           onError: (e) => this.handlers.onError?.(e.data, this),
+          onAutoplayBlocked: () => this.handlers.onAutoplayBlocked?.(this),
         },
       });
     });
@@ -84,6 +85,32 @@ export class DeckPlayer {
   setMuted(on) {
     if (!this.ready) return;
     on ? this.player.mute() : this.player.unMute();
+  }
+
+  /** Rates this video actually accepts, e.g. [0.25, 0.5, 0.75, 1, 1.25, 1.5, 1.75, 2]. */
+  availableRates() {
+    try { return this.player.getAvailablePlaybackRates() || []; } catch { return []; }
+  }
+
+  /**
+   * What the player really does with a requested rate.
+   *
+   * The reference docs claim the value is rounded to the nearest entry of
+   * getAvailablePlaybackRates(). That is not what the player implements: the
+   * array is used only for its first and last element, as clamps, and any
+   * multiple of 0.05 in between is accepted verbatim (rounded toward zero).
+   * So 1.08 becomes 1.05 — a real 5% change, not the no-op the docs imply.
+   */
+  snapRate(r) {
+    const rates = this.availableRates();
+    const lo = rates.length ? rates[0] : 0.25;
+    const hi = rates.length ? rates[rates.length - 1] : 2;
+    let v = Number(Number(r).toFixed(2));
+    if (v <= lo) return lo;
+    if (v >= hi) return hi;
+    const rem = Math.floor(v * 100 + 0.001) % 5;
+    if (rem !== 0) v = Math.floor((v - rem * 0.01) * 100 + 0.001) / 100;
+    return v;
   }
 
   /** YouTube preserves perceived pitch when the rate changes (native key lock). */
