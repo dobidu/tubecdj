@@ -5,15 +5,42 @@ Dois decks de YouTube mixáveis, com o layout de controles de uma Pioneer DDJ-FL
 
 O que o navegador permite fazer com áudio do YouTube é limitado, e a interface diz isso na cara em vez de fingir — veja [O que é real e o que não é](#o-que-é-real-e-o-que-não-é).
 
+**No ar:** <https://dobidu.github.io/tubecdj/>
+
 ## Rodar
 
 ```bash
 npm install
 npm run dev      # http://localhost:5173
 npm run build    # dist/
+npm run preview  # serve o build em http://localhost:4173
 ```
 
 O IFrame Player API exige uma origem HTTP — abrir `index.html` via `file://` não funciona.
+
+## Deploy
+
+Hospedado no GitHub Pages, publicado a partir da branch `gh-pages`:
+
+```bash
+npm run deploy   # build com BASE_PATH=/tubecdj/ e push para gh-pages
+```
+
+`BASE_PATH` existe porque um *project site* do GitHub é servido em `/<repo>/`, não na raiz do domínio. Em qualquer host que sirva na raiz (Cloudflare Pages, Netlify, Vercel), basta `npm run build`.
+
+### Automatizar com Actions (opcional)
+
+O deploy acima é manual por um motivo bobo: o GitHub recusa push em `.github/workflows/` vindo de um token OAuth sem o escopo `workflow`. O workflow pronto está guardado em [`docs/github-pages-workflow.yml`](docs/github-pages-workflow.yml). Para ativá-lo:
+
+```bash
+gh auth refresh -s workflow
+mkdir -p .github/workflows
+git mv docs/github-pages-workflow.yml .github/workflows/deploy.yml
+git commit -m "ci: deploy to GitHub Pages" && git push
+gh api repos/dobidu/tubecdj/pages -X PUT --input - <<< '{"build_type":"workflow"}'
+```
+
+A partir daí, todo push em `main` republica sozinho — Actions é gratuito e sem limite de minutos em repositórios públicos.
 
 ## O que é real e o que não é
 
